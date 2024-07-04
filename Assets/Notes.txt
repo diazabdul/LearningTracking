@@ -1,0 +1,7 @@
+Rule Naming
+
+Theory/NewStuff Name_Name
+
+example
+
+DOTween_GameManager

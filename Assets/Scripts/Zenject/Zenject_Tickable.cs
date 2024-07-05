@@ -6,6 +6,7 @@ using Zenject;
 public class Zenject_Tickable : ITickable
 {
     public event System.Action<KeyCode> OnKeyClick;
+
     public void Tick()
     {
         if (Input.GetKeyDown(KeyCode.Space))

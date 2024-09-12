@@ -1,0 +1,17 @@
+[
+  {
+    "RewardID": 0,
+    "RewardType": 0,
+    "Value": 10
+  },
+  {
+    "RewardID": 1,
+    "RewardType": 1,
+    "Value": 1
+  },
+  {
+    "RewardID": 2,
+    "RewardType": 2,
+    "Value": 2
+  }
+]

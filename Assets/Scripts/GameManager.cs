@@ -12,14 +12,11 @@ public class GameManager : MonoBehaviour
     [Range(3,10)]
     [SerializeField] int tileSize = 4;
 
-    [SerializeField] bool isInteger;
+    [SerializeField] int maxMove = 9;
+    [SerializeField] int currentMove;
     [SerializeField] List<DotPosition> dotPosition = new List<DotPosition>();
     [SerializeField] List<Tile> listTile = new List<Tile>();
     [SerializeField] List<Tile> chainTile = new List<Tile>();
-
-
-    public System.Action<DirectionLine[]> ActivateNextTiles;
-    public System.Action ResetChain;
 
     int GetLastIndexChain => chainTile.Count - 1;
 
@@ -30,18 +27,48 @@ public class GameManager : MonoBehaviour
     [SerializeField] Tile firstNodeTile;
     [SerializeField] List<CompletedNode> completedNodes = new List<CompletedNode>();
 
+    [SerializeField] bool onMouseHold;
+
+    public bool MouseHold => onMouseHold;
+
+
+
+    public System.Action<DirectionLine[]> ActivateNextTiles;
+    public System.Action ResetChain;
+    public System.Action<int> CancelCompletedChain;
+
+
+    //Event For UI
+
+    public delegate void InitializeUI(int maxMove, int targetComplete);
+    public static event InitializeUI OnInitializeUI;
+
+    public delegate void UpdateMove(int move);
+    public static event UpdateMove OnUpdateMove;
+
+    public delegate void UpdateCompleteChain(int complete);
+    public static event UpdateCompleteChain OnUpdateCompleteChain;
+
     public void OnTileFirstClick(Tile tile)
     {
         AddSChainTile(tile);
         currentTile = tile;
         firstNodeTile = tile;
+        onMouseHold = true;
     }
     public void AddSChainTile(Tile tile)
     {
+        if (currentMove + 1 > maxMove) return;
         if (chainTile.Contains(tile)) return;
 
         chainTile.Add(tile);
-        ActivateNextTile(tile.GetPos);
+        
+        currentMove++;
+
+        OnUpdateMove?.Invoke(currentMove);
+        
+        if(currentMove+1 <= maxMove)
+            ActivateNextTile(tile.GetPos);
     }
     public void ResetChainTile()
     {
@@ -52,20 +79,70 @@ public class GameManager : MonoBehaviour
         lastExitTile = null;
 
         firstNodeTile = null;
+
+        onMouseHold = false;
+
+        currentMove = 0;
+
+        OnUpdateMove?.Invoke(currentMove);
+    }
+    public void ResetCompleteChain(Tile tile)
+    {
+        foreach (var item in completedNodes)
+        {
+            if(item.NodeId == tile.GetTileId)
+            {
+                CancelCompletedChain.Invoke(item.NodeId);
+
+                completedNodes.Remove(item);
+
+                OnUpdateCompleteChain?.Invoke(completedNodes.Count);
+                return;
+            }
+        }
+
+        
+    }
+    public bool CheckBackwardMove(Tile tile)
+    {
+        if (chainTile[Mathf.Abs(GetLastIndexChain-1)] == tile)
+        {
+            currentTile = tile;
+            lastExitTile = chainTile[GetLastIndexChain-1];
+            tile.SetPipe(false);
+            Debug.LogWarning("Backward Move !! Remove Tile " + chainTile[GetLastIndexChain].name);
+            chainTile[GetLastIndexChain].SetSelected(false);
+            chainTile.RemoveAt(GetLastIndexChain);
+
+            currentMove--;
+
+            OnUpdateMove?.Invoke(currentMove);
+            return true;
+        }
+        return false;
     }
     public bool CheckWin(Tile tile)
     {
+        if (firstNodeTile == null) return false;
+
         if((firstNodeTile != tile) && firstNodeTile.GetTileId == tile.GetTileId)
         {
             Debug.Log("Chain Completed");
+
+            currentMove = 0;
+
+            OnUpdateMove?.Invoke(currentMove);
 
             chainTile.Add(tile);
 
             foreach (var item in chainTile)
             {
                 item.SetChainComplete();
+                item.SetTileId(firstNodeTile.GetTileId);
             }
             completedNodes.Add(new CompletedNode(firstNodeTile.GetTileId, chainTile));
+
+            OnUpdateCompleteChain?.Invoke(completedNodes.Count);
 
             ResetChain?.Invoke();
 
@@ -74,12 +151,14 @@ public class GameManager : MonoBehaviour
                         lastExitTile = null;
 
                         firstNodeTile = null;*/
+            
+            onMouseHold = false;
 
             return true;
         }
         return false;
     }
-    void ActivateNextTile(Vector2 vec)
+    public void ActivateNextTile(Vector2 vec)
     {
         Vector2 right = new(vec.x+1, vec.y);
         Vector2 top = new(vec.x, vec.y+1);
@@ -138,6 +217,9 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
+
+
+        OnInitializeUI?.Invoke(maxMove, dotPosition.Count);
     }
 
     public void OnTileEnter(Tile obj)
@@ -153,11 +235,12 @@ public class GameManager : MonoBehaviour
             //chainTile.RemoveAt(chainTile.Count-1);
             chainTile.Remove(obj);
         }
+        lastExitTile = currentTile;
         currentTile = obj;
 
         if(lastExitTile != null)
         {
-            lastExitTile.SetPipe(currentTile.GetPipeDirection);
+            lastExitTile.SetPipe(currentTile.GetPipeDirection, GetNodeLineColor(firstNodeTile.GetTileId));
         }
 
     }
@@ -165,6 +248,11 @@ public class GameManager : MonoBehaviour
     public void OnTileExit(Tile obj)
     {
         lastExitTile = obj;
+    }
+
+    public Color GetNodeLineColor(int index)
+    {
+        return dotPosition[index].Color;
     }
 
 }

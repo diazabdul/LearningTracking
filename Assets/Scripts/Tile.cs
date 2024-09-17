@@ -14,10 +14,9 @@ public class Tile : MonoBehaviour
     [SerializeField] bool isDone;
     [SerializeField] SpriteRenderer tile;
     [SerializeField] SpriteRenderer circle;
-    [SerializeField] Transform pipeTransform;
-    [SerializeField] SpriteRenderer pipe;
     [SerializeField] Vector2 tilePos;
     [SerializeField] PipePos pipePosition;
+    [SerializeField] PipeOnTile pipe;
     public Vector2 GetPos => tilePos;
     public PipePos GetPipeDirection => pipePosition;
     public int GetTileId => id;
@@ -31,32 +30,48 @@ public class Tile : MonoBehaviour
         this.gameManager = gameManager;
 
         circle.enabled = false;
-        pipe.enabled = false;
+        pipe.SetActive(false);
 
         this.gameManager.ActivateNextTiles += OnActivateNextTile;
         this.gameManager.ResetChain += OnResetedChain;
+        this.gameManager.CancelCompletedChain += OnCancelCompletedChain;
     }
+
+    private void OnCancelCompletedChain(int obj)
+    {
+        if(id == obj)
+        {
+            if (!firstNode)
+            {
+                id = -1;
+            }
+            SetPipe(false);
+            isDone = false;
+        }
+    }
+
     public void SetChainComplete()
     {
         isDone = true;
         allowHighlight = false;
-        firstNode = false;
+        //firstNode = false;
         isSelected = false;
     }
     private void OnResetedChain()
     {
         if (!isDone)
         {
-            firstNode = false;
+            //firstNode = false;
             allowHighlight = false;
-            isSelected = false;
 
+            isSelected = false;
             SetPipe(false);
         }
     }
 
     private void OnActivateNextTile(DirectionLine[] obj)
     {
+        if (isSelected) return;
         foreach (var item in obj)
         {
             if(item.Pos == tilePos)
@@ -76,27 +91,48 @@ public class Tile : MonoBehaviour
 
         circle.color = col;
         circle.enabled = true;
+
+        firstNode = true;
     }
     public void SetPipe(bool b)
     {
         if (b)
         {
-            pipeTransform.localRotation = new Quaternion(0, 0, (int)pipePosition, 0);
+            pipe.transform.localRotation = new Quaternion(0, 0, (int)pipePosition, 0);
         }
-        pipe.enabled = b;
+        pipe.SetActive(b);
     }
-    public void SetPipe(PipePos pipePos)
+    public void SetPipe(PipePos pipePos, Color col)
     {
-        Debug.Log("Set Pipe Value = " + (int)pipePos);
+        if (isDone && !firstNode) return;
+        Debug.Log($"Set Pipe Tile {gameObject.name} Value = " + (int)pipePos);
         pipePosition = pipePos;
         Vector3 rotateTarget = new Vector3(0, 0, (int)pipePos);
-        pipeTransform.DORotate(rotateTarget, 0);
-        pipe.enabled = true;
+        pipe.transform.DORotate(rotateTarget, 0);
+
+        pipe.GetLine.color = col;
+        pipe.SetActive(true);
     }
     private void OnMouseEnter()
     {
-        if ((allowHighlight && !isSelected) || firstNode)
+        if (isSelected)
         {
+            if (gameManager.CheckBackwardMove(this))
+            {
+                gameManager.ActivateNextTile(tilePos);
+            }
+            return;
+        }
+        if (isDone && gameManager.MouseHold)
+        {
+            gameManager.ResetCompleteChain(this);
+            gameManager.OnTileEnter(this);
+            Debug.Log("Reset Complete Chain");
+            return;
+        }
+        if ((allowHighlight && !isSelected))
+        {
+            //gameManager.OnTileExit(this);
             Debug.Log("Mouse Enter");
             isSelected = true;
 
@@ -104,7 +140,7 @@ public class Tile : MonoBehaviour
             {
                 if (gameManager.CheckWin(this))
                 {
-                    SetPipe(GetReversePos(pipePosition));
+                    SetPipe(GetReversePos(pipePosition), gameManager.GetNodeLineColor(id));
                 }
             }
             else
@@ -114,16 +150,17 @@ public class Tile : MonoBehaviour
     }
     private void OnMouseExit()
     {
-        if (!isSelected && !firstNode && isDone) return;
+        /*if (!isSelected && !firstNode && isDone) return;
 
-        gameManager.OnTileExit(this);
+        gameManager.OnTileExit(this);*/
     }
     private void OnMouseDown()
     {
         if (id < 0 || isDone) return;
-        firstNode = true;        
+        //firstNode = true;        
         gameManager.OnTileFirstClick(this);
-        Debug.Log("Mouse Down");
+        isSelected = true;
+        Debug.Log("Mouse Down Tile = "+gameObject.name);
     }
     private void OnMouseUp()
     {
@@ -141,6 +178,7 @@ public class Tile : MonoBehaviour
     }
     PipePos GetReversePos(PipePos pos)
     {
+        Debug.Log($"Reverse Pipe From {gameObject.name}");
         switch (pos)
         {
             case PipePos.Right:

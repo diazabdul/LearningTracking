@@ -551,9 +551,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tile: {fileID: 1846530816538513800, guid: 197dccfd2e1b4344a820719de4f7f248, type: 3}
   lookPos: {fileID: 174600745}
-  tileSize: 3
+  tileSize: 5
   isInteger: 0
   dotPosition:
   - FirstNode: {x: 0, y: 0}
+    SecondNode: {x: 3, y: 3}
+    Color: {r: 1, g: 0, b: 0, a: 1}
+  - FirstNode: {x: 1, y: 1}
     SecondNode: {x: 2, y: 2}
+    Color: {r: 0.31132078, g: 0, b: 0, a: 1}
   listTile: []
+  chainTile: []
+  currentTile: {fileID: 0}
+  lastExitTile: {fileID: 0}
+  firstNodeTile: {fileID: 0}
+  completedNodes: []

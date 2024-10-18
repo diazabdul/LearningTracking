@@ -6,6 +6,7 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     [Header("Main Components")]
+    [SerializeField] ConnDotDataSO data;
     [SerializeField] Tile tile;
     [SerializeField] Transform lookPos;
     [Header("Game Setting")]
@@ -14,7 +15,7 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] int maxMove = 9;
     [SerializeField] int currentMove;
-    [SerializeField] List<DotPosition> dotPosition = new List<DotPosition>();
+    [SerializeField] DotPosition[] dotPosition;
     [SerializeField] List<Tile> listTile = new List<Tile>();
     [SerializeField] List<Tile> chainTile = new List<Tile>();
 
@@ -46,7 +47,7 @@ public class GameManager : MonoBehaviour
     public delegate void UpdateMove(int move);
     public static event UpdateMove OnUpdateMove;
 
-    public delegate void UpdateCompleteChain(int complete);
+    public delegate void UpdateCompleteChain(int complete, float percentage);
     public static event UpdateCompleteChain OnUpdateCompleteChain;
 
     public void OnTileFirstClick(Tile tile)
@@ -95,8 +96,8 @@ public class GameManager : MonoBehaviour
                 CancelCompletedChain.Invoke(item.NodeId);
 
                 completedNodes.Remove(item);
-
-                OnUpdateCompleteChain?.Invoke(completedNodes.Count);
+                
+                OnUpdateCompleteChain?.Invoke(completedNodes.Count, GetPercent());
                 return;
             }
         }
@@ -142,7 +143,7 @@ public class GameManager : MonoBehaviour
             }
             completedNodes.Add(new CompletedNode(firstNodeTile.GetTileId, chainTile));
 
-            OnUpdateCompleteChain?.Invoke(completedNodes.Count);
+            OnUpdateCompleteChain?.Invoke(completedNodes.Count, GetPercent());
 
             ResetChain?.Invoke();
 
@@ -154,9 +155,29 @@ public class GameManager : MonoBehaviour
             
             onMouseHold = false;
 
+            if(completedNodes.Count == dotPosition.Length)
+            {
+                OnLevelComplete();
+            }
+
             return true;
         }
         return false;
+    }
+    void OnLevelComplete()
+    {
+        if(data.GetPlayer.CurrentLevel +1 < data.MaxLevel)
+        {
+            data.GetPlayer.LevelUp();
+
+            Debug.LogWarning("Player Level Up");            
+        }        
+        Debug.LogWarning("Game Complete");
+    }
+    [ContextMenu("Reset Level")]
+    void ResetLevel()
+    {
+        data.GetPlayer.ResetLevel();
     }
     public void ActivateNextTile(Vector2 vec)
     {
@@ -174,8 +195,22 @@ public class GameManager : MonoBehaviour
     {
 
     }
+    float GetPercent(){
+        float complete = completedNodes.Count;
+        float max = dotPosition.Length;
+        float percent = (complete/max) *100;
+        return percent;
+    }
     private void Awake()
     {
+
+        var tempLevel = data.GetLevel(data.GetPlayer.CurrentLevel);
+
+        maxMove = tempLevel.MaxMove;
+        tileSize = tempLevel.TileSize;
+
+        dotPosition = tempLevel.GetDotPlacement;
+
         Vector2 camPos;
         if (tileSize % 2 == 0)
         {
@@ -209,7 +244,7 @@ public class GameManager : MonoBehaviour
 
         foreach (var item in listTile)
         {
-            for (int i = 0; i < dotPosition.Count; i++)
+            for (int i = 0; i < dotPosition.Length; i++)
             {
                 if(item.GetPos == dotPosition[i].FirstNode || item.GetPos == dotPosition[i].SecondNode)
                 {
@@ -219,7 +254,7 @@ public class GameManager : MonoBehaviour
         }
 
 
-        OnInitializeUI?.Invoke(maxMove, dotPosition.Count);
+        OnInitializeUI?.Invoke(maxMove, dotPosition.Length);
     }
 
     public void OnTileEnter(Tile obj)

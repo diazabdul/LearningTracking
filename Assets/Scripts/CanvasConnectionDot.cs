@@ -9,6 +9,7 @@ public class CanvasConnectionDot : MonoBehaviour
     [SerializeField] TextMeshProUGUI maxMove;
     [SerializeField] TextMeshProUGUI currentComplete;
     [SerializeField] TextMeshProUGUI targetComplete;
+    [SerializeField] TextMeshProUGUI percentComplete;
 
     private void OnEnable()
     {
@@ -17,9 +18,12 @@ public class CanvasConnectionDot : MonoBehaviour
         GameManager.OnUpdateCompleteChain += UpdateCompleteChain;
     }
 
-    private void UpdateCompleteChain(int complete)
+    private void UpdateCompleteChain(int complete, float percentage)
     {
         this.currentComplete.text = $"Chain {complete}";
+
+        if(percentage < 0) return;
+        this.percentComplete.text = $"{percentage} %";
     }
 
     private void UpdateMove(int move)
